@@ -1,0 +1,20 @@
+{
+  "slug": "Collide",
+  "name": "Collide",
+  "version": "1.0.0",
+  "license": "CC0-1.0",
+  "author": "Yilin Zhang",
+  "authorEmail": "yzhang0129@outlook.com",
+  "authorUrl": "https://github.com/yilin-zhang",
+  "modules": [
+    {
+      "slug": "CollidePan",
+      "name": "CollidePan",
+      "description": "Simple panning utility",
+      "tags": [
+        "Pan",
+        "Utility"
+      ]
+    }
+  ]
+}
