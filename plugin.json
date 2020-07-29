@@ -15,6 +15,16 @@
         "Pan",
         "Utility"
       ]
+    },
+    {
+      "slug": "CollideShuf",
+      "name": "CollideShuf",
+      "description": "Weighted Shuffled Gate Output",
+      "tags": [
+        "Gate",
+        "Random",
+        "Utility"
+      ]
     }
   ]
 }
