@@ -3,60 +3,84 @@
 
 struct CollidePan : Module {
 	enum ParamIds {
-		PARAM_PAN,
-		PARAM_PAN_ATV,
+		PARAM_PAN_1,
+		PARAM_ATV_1,
+        PARAM_PAN_2,
+        PARAM_ATV_2,
 		NUM_PARAMS
 	};
 	enum InputIds {
-		INPUT_SIGNAL,
-		INPUT_PAN_MOD,
+		INPUT_SIGNAL_1,
+		INPUT_MOD_1,
+        INPUT_SIGNAL_2,
+        INPUT_MOD_2,
 		NUM_INPUTS
 	};
 	enum OutputIds {
-		OUTPUT_SIGNAL_L,
-		OUTPUT_SIGNAL_R,
+		OUTPUT_SIGNAL_L_1,
+		OUTPUT_SIGNAL_R_1,
+        OUTPUT_SIGNAL_L_2,
+        OUTPUT_SIGNAL_R_2,
 		NUM_OUTPUTS
 	};
 	enum LightIds {
 		NUM_LIGHTS
 	};
 
+    const int outIdxL[2] = {OUTPUT_SIGNAL_L_1, OUTPUT_SIGNAL_L_2};
+    const int outIdxR[2] = {OUTPUT_SIGNAL_R_1, OUTPUT_SIGNAL_R_2};
+    const int panIdx[2] = {PARAM_PAN_1, PARAM_PAN_2};
+    const int atvIdx[2] = {PARAM_ATV_1, PARAM_ATV_2};
+    const int modIdx[2] = {INPUT_MOD_1, INPUT_MOD_2};
+    const int inIdx[2] = {INPUT_SIGNAL_1, INPUT_SIGNAL_2};
+
+    float pan[2] = {0.5, 0.5};
+    float atv[2] = {0, 0};
+
 	CollidePan() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(PARAM_PAN, -1.f, 1.f, 0.0f, "Pan");
-		configParam(PARAM_PAN_ATV, -1.f, 1.f, 0.f, "Pan Attenuverter");
+		configParam(PARAM_PAN_1, -1.f, 1.f, 0.0f, "Pan 1");
+		configParam(PARAM_ATV_1, -1.f, 1.f, 0.f, "Attenuverter 1");
+        configParam(PARAM_PAN_2, -1.f, 1.f, 0.0f, "Pan 2");
+        configParam(PARAM_ATV_2, -1.f, 1.f, 0.f, "Attenuverter 2");
 	}
 
 	void process(const ProcessArgs& args) override {
-	    float out, pan, panMod=0, panAtv;
-	    if (inputs[INPUT_SIGNAL].isConnected()) {
-            out = inputs[INPUT_SIGNAL].getVoltage();
-	        pan = params[PARAM_PAN].getValue();
-	        panAtv = params[PARAM_PAN_ATV].getValue();
 
-	        // get pan modulation value
-	        if (inputs[INPUT_PAN_MOD].isConnected()) {
-                panMod = inputs[INPUT_PAN_MOD].getVoltage();
+	    float out[2] = {0, 0};
+	    float mod[2] = {0, 0};
 
-                panMod = clamp(panMod, -5.f, 5.f); // trim the value
+	    for (int i=0; i<2; ++i) {
+	        // if pan[i] and atv[i] don't change, don't update mod
+	        if (inputs[inIdx[i]].isConnected()) {
+	            out[i] = inputs[inIdx[i]].getVoltage();
+                pan[i] = params[panIdx[i]].getValue();
+                atv[i] = params[atvIdx[i]].getValue();
 
-                panMod /= 5;
-            }
-            panMod = panMod * panAtv; // range: (-1, 1)
+                // get pan modulation value
+                if (inputs[modIdx[i]].isConnected()) {
+                    mod[i] = inputs[modIdx[i]].getVoltage();
+                    mod[i] = clamp(mod[i], -5.f, 5.f); // trim the value
+                    mod[i] /= 5;
+                }
+                mod[i] = mod[i] * atv[i]; // range: (-1, 1)
 
-	        pan = pan + panMod; // modulate the pan
-            pan = clamp(pan, -1.f, 1.f); // trim the value
-            pan = (pan + 1) / 2; // scale it to (0, 1)
+                pan[i] = pan[i] + mod[i]; // modulate the pan
+                pan[i] = clamp(pan[i], -1.f, 1.f); // trim the value
+                pan[i] = (pan[i] + 1) / 2; // scale it to (0, 1)
 
-            // equal power panning
-            if (outputs[OUTPUT_SIGNAL_L].isConnected()) {
-                outputs[OUTPUT_SIGNAL_L].setVoltage(out * sqrt(1 - pan));
-            }
-            if (outputs[OUTPUT_SIGNAL_R].isConnected()) {
-                outputs[OUTPUT_SIGNAL_R].setVoltage(out * sqrt(pan));
-            }
-
-        }
+                // equal power panning
+                if (outputs[outIdxL[i]].isConnected()) {
+                    outputs[outIdxL[i]].setVoltage(out[i] * sqrt(1 - pan[i]));
+                }
+                if (outputs[outIdxR[i]].isConnected()) {
+                    outputs[outIdxR[i]].setVoltage(out[i] * sqrt(pan[i]));
+                }
+	        } else {
+	            outputs[outIdxL[i]].setVoltage(0.f);
+                outputs[outIdxR[i]].setVoltage(0.f);
+	        }
+	    }
     }
 };
 
@@ -71,14 +95,26 @@ struct CollidePanWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		addParam(createParamCentered<Rogan2PSWhite>(Vec(45, 185.2), module, CollidePan::PARAM_PAN));
-		addParam(createParamCentered<Trimpot>(Vec(64.9, 225), module, CollidePan::PARAM_PAN_ATV));
+		// part 1
+		addParam(createParamCentered<Rogan1PSWhite>(Vec(63.5, 101.9), module, CollidePan::PARAM_PAN_1));
+		addParam(createParamCentered<Trimpot>(Vec(63.5, 139), module, CollidePan::PARAM_ATV_1));
 
-		addInput(createInputCentered<PJ301MPort>(Vec(45, 118.9), module, CollidePan::INPUT_SIGNAL));
-		addInput(createInputCentered<PJ301MPort>(Vec(26.5, 225), module, CollidePan::INPUT_PAN_MOD));
+		addInput(createInputCentered<PJ301MPort>(Vec(25.8, 101.9), module, CollidePan::INPUT_SIGNAL_1));
+		addInput(createInputCentered<PJ301MPort>(Vec(25.8, 139), module, CollidePan::INPUT_MOD_1));
 
-		addOutput(createOutputCentered<PJ301MPort>(Vec(26.5, 299.9), module, CollidePan::OUTPUT_SIGNAL_L));
-		addOutput(createOutputCentered<PJ301MPort>(Vec(64.9, 299.9), module, CollidePan::OUTPUT_SIGNAL_R));
+		addOutput(createOutputCentered<PJ301MPort>(Vec(25.8, 184.5), module, CollidePan::OUTPUT_SIGNAL_L_1));
+		addOutput(createOutputCentered<PJ301MPort>(Vec(64.2, 184.5), module, CollidePan::OUTPUT_SIGNAL_R_1));
+
+		// part 2
+
+        addParam(createParamCentered<Rogan1PSWhite>(Vec(63.5, 241.9), module, CollidePan::PARAM_PAN_2));
+        addParam(createParamCentered<Trimpot>(Vec(63.5, 279), module, CollidePan::PARAM_ATV_2));
+
+        addInput(createInputCentered<PJ301MPort>(Vec(25.8, 241.9), module, CollidePan::INPUT_SIGNAL_2));
+        addInput(createInputCentered<PJ301MPort>(Vec(25.8, 279), module, CollidePan::INPUT_MOD_2));
+
+        addOutput(createOutputCentered<PJ301MPort>(Vec(25.8, 324.5), module, CollidePan::OUTPUT_SIGNAL_L_2));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(64.2, 324.5), module, CollidePan::OUTPUT_SIGNAL_R_2));
 	}
 };
 

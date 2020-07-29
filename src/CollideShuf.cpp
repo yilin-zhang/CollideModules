@@ -52,8 +52,9 @@ struct CollideShuf : Module {
         NUM_LIGHTS
     };
 
-    dsp::SchmittTrigger clockTrigger;
-    int numSteps = 8, clockGate=0;
+    dsp::SchmittTrigger clockTriggerUp;
+    dsp::SchmittTrigger clockTriggerDown;
+    int numSteps = 0; // set it 0 to make sure it must be updated when starting up
     float weightInputs[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
     float weights[8] = {0.125f, 0.125f, 0.125f, 0.125f, 0.125f, 0.125f, 0.125f, 0.125f};
 
@@ -70,6 +71,12 @@ struct CollideShuf : Module {
         configParam(PARAM_WGT_8, 0.f, 1.f, 0.5f, "Weight 8");
     }
 
+    void setZeroOutputs() {
+        for (int i=0; i<8; ++i) {
+            outputs[i].setVoltage(0.f);
+        }
+    }
+
     void process(const ProcessArgs& args) override {
         int currentNumSteps = params[PARAM_STEPS].getValue();
         int updateWeightsFlag = false;
@@ -84,7 +91,6 @@ struct CollideShuf : Module {
                 lights[GATE_LIGHTS + i].setBrightness(1.f);
             }
             for (int i=numSteps; i<8; ++i) {
-                outputs[i].setVoltage(0.f); // set all the unused outputs 0
                 lights[GATE_LIGHTS + i].setBrightness(0.f);
             }
             // set the flag true
@@ -122,22 +128,23 @@ struct CollideShuf : Module {
         }
 
         // check clock input
-        clockInput = abs(inputs[INPUT_CLK].getVoltage()) / 10.f;
-        if (clockTrigger.process(clockInput)) {
-            clockGate = 1 - clockGate;
-            if (clockGate == 1) {
+        if (inputs[INPUT_CLK].isConnected()) {
+            clockInput = abs(inputs[INPUT_CLK].getVoltage()) / 10.f;
+            if (clockTriggerUp.process(clockInput)) {
                 randValue = distribution(generator);
                 for (int i=0; i<numSteps; ++i) {
                     if (randValue >= stepSum && randValue < (stepSum + weights[i])) {
                         outputs[i].setVoltage(10.f);
+                        break;
+                    } else {
+                        stepSum += weights[i];
                     }
-                    stepSum += weights[i];
                 }
-            } else {
-                for (int i=0; i<numSteps; ++i) {
-                    outputs[i].setVoltage(0.f);
-                }
+            } else if (clockTriggerDown.process(1 - clockInput)) {
+                setZeroOutputs();
             }
+        } else {
+            setZeroOutputs();
         }
     }
 };
@@ -153,42 +160,42 @@ struct CollideShufWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         addParam(createParamCentered<StepsKnob>(Vec(80.1, 90.7), module, CollideShuf::PARAM_STEPS));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 120.2), module, CollideShuf::PARAM_WGT_1));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 149.0), module, CollideShuf::PARAM_WGT_2));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 177.6), module, CollideShuf::PARAM_WGT_3));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 206.4), module, CollideShuf::PARAM_WGT_4));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 235.1), module, CollideShuf::PARAM_WGT_5));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 263.8), module, CollideShuf::PARAM_WGT_6));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 292.7), module, CollideShuf::PARAM_WGT_7));
-        addParam(createParamCentered<Trimpot>(Vec(48.5, 321.3), module, CollideShuf::PARAM_WGT_8));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 124.2), module, CollideShuf::PARAM_WGT_1));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 153.0), module, CollideShuf::PARAM_WGT_2));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 181.6), module, CollideShuf::PARAM_WGT_3));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 210.4), module, CollideShuf::PARAM_WGT_4));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 239.1), module, CollideShuf::PARAM_WGT_5));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 267.8), module, CollideShuf::PARAM_WGT_6));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 296.7), module, CollideShuf::PARAM_WGT_7));
+        addParam(createParamCentered<Trimpot>(Vec(48.5, 325.3), module, CollideShuf::PARAM_WGT_8));
 
         addInput(createInputCentered<PJ301MPort>(Vec(36, 90), module, CollideShuf::INPUT_CLK));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 120.2), module, CollideShuf::INPUT_WGT_1));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 149.0), module, CollideShuf::INPUT_WGT_2));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 177.6), module, CollideShuf::INPUT_WGT_3));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 206.4), module, CollideShuf::INPUT_WGT_4));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 235.1), module, CollideShuf::INPUT_WGT_5));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 263.8), module, CollideShuf::INPUT_WGT_6));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 292.7), module, CollideShuf::INPUT_WGT_7));
-        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 321.3), module, CollideShuf::INPUT_WGT_8));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 124.2), module, CollideShuf::INPUT_WGT_1));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 153.0), module, CollideShuf::INPUT_WGT_2));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 181.6), module, CollideShuf::INPUT_WGT_3));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 210.4), module, CollideShuf::INPUT_WGT_4));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 239.1), module, CollideShuf::INPUT_WGT_5));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 267.8), module, CollideShuf::INPUT_WGT_6));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 296.7), module, CollideShuf::INPUT_WGT_7));
+        addInput(createInputCentered<PJ301MPort>(Vec(16.5, 325.3), module, CollideShuf::INPUT_WGT_8));
 
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 120.2), module, CollideShuf::OUTPUT_GATE_1));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 149.0), module, CollideShuf::OUTPUT_GATE_2));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 177.6), module, CollideShuf::OUTPUT_GATE_3));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 206.4), module, CollideShuf::OUTPUT_GATE_4));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 235.1), module, CollideShuf::OUTPUT_GATE_5));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 263.8), module, CollideShuf::OUTPUT_GATE_6));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 292.7), module, CollideShuf::OUTPUT_GATE_7));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 321.3), module, CollideShuf::OUTPUT_GATE_8));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 124.2), module, CollideShuf::OUTPUT_GATE_1));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 153.0), module, CollideShuf::OUTPUT_GATE_2));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 181.6), module, CollideShuf::OUTPUT_GATE_3));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 210.4), module, CollideShuf::OUTPUT_GATE_4));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 239.1), module, CollideShuf::OUTPUT_GATE_5));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 267.8), module, CollideShuf::OUTPUT_GATE_6));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 296.7), module, CollideShuf::OUTPUT_GATE_7));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(92.9, 325.3), module, CollideShuf::OUTPUT_GATE_8));
 
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 120.2), module, CollideShuf::GATE_LIGHTS + 0));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 149.0), module, CollideShuf::GATE_LIGHTS + 1));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 177.6), module, CollideShuf::GATE_LIGHTS + 2));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 206.4), module, CollideShuf::GATE_LIGHTS + 3));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 235.1), module, CollideShuf::GATE_LIGHTS + 4));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 263.8), module, CollideShuf::GATE_LIGHTS + 5));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 292.7), module, CollideShuf::GATE_LIGHTS + 6));
-        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 321.3), module, CollideShuf::GATE_LIGHTS + 7));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 124.2), module, CollideShuf::GATE_LIGHTS + 0));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 153.0), module, CollideShuf::GATE_LIGHTS + 1));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 181.6), module, CollideShuf::GATE_LIGHTS + 2));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 210.4), module, CollideShuf::GATE_LIGHTS + 3));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 239.1), module, CollideShuf::GATE_LIGHTS + 4));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 267.8), module, CollideShuf::GATE_LIGHTS + 5));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 296.7), module, CollideShuf::GATE_LIGHTS + 6));
+        addChild(createLightCentered<SmallLight<RedLight>>(Vec(110, 325.3), module, CollideShuf::GATE_LIGHTS + 7));
     }
 };
 

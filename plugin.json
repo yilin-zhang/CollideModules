@@ -9,21 +9,21 @@
   "modules": [
     {
       "slug": "CollidePan",
-      "name": "CollidePan",
-      "description": "Simple panning utility",
+      "name": "Pan",
+      "description": "A dual equal power panner",
       "tags": [
-        "Pan",
+        "Panning",
+        "Voltage-controlled amplifier",
+        "Dual",
         "Utility"
       ]
     },
     {
       "slug": "CollideShuf",
-      "name": "CollideShuf",
-      "description": "Weighted Shuffled Gate Output",
+      "name": "Shuf",
+      "description": "A weighted random gate generator",
       "tags": [
-        "Gate",
-        "Random",
-        "Utility"
+        "Random"
       ]
     }
   ]
