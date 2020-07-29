@@ -33,7 +33,7 @@ struct CollideShuf : Module {
         INPUT_WGT_6,
         INPUT_WGT_7,
         INPUT_WGT_8,
-        INPUT_CLK,
+        INPUT_GATE,
         NUM_INPUTS
     };
     enum OutputIds {
@@ -52,8 +52,8 @@ struct CollideShuf : Module {
         NUM_LIGHTS
     };
 
-    dsp::SchmittTrigger clockTriggerUp;
-    dsp::SchmittTrigger clockTriggerDown;
+    dsp::SchmittTrigger gateTriggerUp;
+    dsp::SchmittTrigger gateTriggerDown;
     int numSteps = 0; // set it 0 to make sure it must be updated when starting up
     float weightInputs[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
     float weights[8] = {0.125f, 0.125f, 0.125f, 0.125f, 0.125f, 0.125f, 0.125f, 0.125f};
@@ -80,7 +80,7 @@ struct CollideShuf : Module {
     void process(const ProcessArgs& args) override {
         int currentNumSteps = params[PARAM_STEPS].getValue();
         int updateWeightsFlag = false;
-        float weightInput, clockInput, randValue, stepSum=0.f;
+        float weightInput, gateInput, randValue, stepSum=0.f;
 
         // display lights based on steps
         if (numSteps != currentNumSteps) {
@@ -128,9 +128,9 @@ struct CollideShuf : Module {
         }
 
         // check clock input
-        if (inputs[INPUT_CLK].isConnected()) {
-            clockInput = abs(inputs[INPUT_CLK].getVoltage()) / 10.f;
-            if (clockTriggerUp.process(clockInput)) {
+        if (inputs[INPUT_GATE].isConnected()) {
+            gateInput = abs(inputs[INPUT_GATE].getVoltage()) / 10.f;
+            if (gateTriggerUp.process(gateInput)) {
                 randValue = distribution(generator);
                 for (int i=0; i<numSteps; ++i) {
                     if (randValue >= stepSum && randValue < (stepSum + weights[i])) {
@@ -140,7 +140,7 @@ struct CollideShuf : Module {
                         stepSum += weights[i];
                     }
                 }
-            } else if (clockTriggerDown.process(1 - clockInput)) {
+            } else if (gateTriggerDown.process(1 - gateInput)) {
                 setZeroOutputs();
             }
         } else {
@@ -169,7 +169,7 @@ struct CollideShufWidget : ModuleWidget {
         addParam(createParamCentered<Trimpot>(Vec(48.5, 296.7), module, CollideShuf::PARAM_WGT_7));
         addParam(createParamCentered<Trimpot>(Vec(48.5, 325.3), module, CollideShuf::PARAM_WGT_8));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(36, 90), module, CollideShuf::INPUT_CLK));
+        addInput(createInputCentered<PJ301MPort>(Vec(36, 90), module, CollideShuf::INPUT_GATE));
         addInput(createInputCentered<PJ301MPort>(Vec(16.5, 124.2), module, CollideShuf::INPUT_WGT_1));
         addInput(createInputCentered<PJ301MPort>(Vec(16.5, 153.0), module, CollideShuf::INPUT_WGT_2));
         addInput(createInputCentered<PJ301MPort>(Vec(16.5, 181.6), module, CollideShuf::INPUT_WGT_3));
