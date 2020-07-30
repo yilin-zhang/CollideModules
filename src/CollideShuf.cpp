@@ -8,9 +8,6 @@ struct StepsKnob : RoundSmallBlackKnob {
     }
 };
 
-std::default_random_engine generator;
-std::uniform_real_distribution<float> distribution (0.0f, 1.0f);
-
 struct CollideShuf : Module {
     enum ParamIds {
         PARAM_WGT_1,
@@ -100,8 +97,8 @@ struct CollideShuf : Module {
         // check if weights need to be updated
         for (int i=0; i<numSteps; ++i) {
             if (inputs[i].isConnected())
-                // accept unipolar input
-                weightInput = abs(inputs[i].getVoltage()) / 10.f;
+                // accept bipolar input
+                weightInput = clamp(params[i].getValue() + inputs[i].getVoltage() / 5.f, 0.f, 1.f);
             else
                 weightInput = params[i].getValue();
 
@@ -131,7 +128,7 @@ struct CollideShuf : Module {
         if (inputs[INPUT_GATE].isConnected()) {
             gateInput = abs(inputs[INPUT_GATE].getVoltage()) / 10.f;
             if (gateTriggerUp.process(gateInput)) {
-                randValue = distribution(generator);
+                randValue = random::uniform();
                 for (int i=0; i<numSteps; ++i) {
                     if (randValue >= stepSum && randValue < (stepSum + weights[i])) {
                         outputs[i].setVoltage(10.f);
