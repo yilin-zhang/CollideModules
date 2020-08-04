@@ -7,3 +7,4 @@ extern Plugin *pluginInstance;
 
 extern Model *modelCollidePan;
 extern Model *modelCollideShuf;
+extern Model *modelCollideEnv;

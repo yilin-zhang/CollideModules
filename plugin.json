@@ -25,6 +25,14 @@
       "tags": [
         "Random"
       ]
+    },
+    {
+      "slug": "CollideEnv",
+      "name": "Env",
+      "description": "A full-featured ADSR envelope generator",
+      "tags": [
+        "Envelope"
+      ]
     }
   ]
 }
