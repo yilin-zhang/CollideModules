@@ -1,29 +1,6 @@
 #include "plugin.hpp"
+#include "ColliderUtils.h"
 
-
-//util functionalities
-template <typename T>
-struct RCFilter {
-    T yn1;
-    T a; // the filter coefficient
-
-    void setTau(T tau) {
-        this->a = tau / (tau + APP->engine->getSampleTime());
-    }
-
-    /*! Return the next value
-        @T xn the target value
-     */
-    T process(T xn) {
-        T yn = this->a * yn1 + (1 - this->a) * xn;
-        yn1 = yn;
-        return yn;
-    }
-
-    void reset() {
-        yn1 = 0;
-    }
-};
 
 // time values in second
 const float MIN_STAGE_TIME = 1e-3f;
@@ -89,7 +66,9 @@ struct CollideEnv : Module {
     bool isActive;
     RCFilter<float> rcf;
 
-    CollideEnv() {
+    CollideEnv():
+    rcf(pow(LAMBDA_BASE, 0.5) * MIN_STAGE_TIME)
+    {
         config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 
         configParam(PARAM_GATE_TRIG_SWITCH, 0, 1, 1, "Gate/Trig Switch");

@@ -33,6 +33,14 @@
       "tags": [
         "Envelope"
       ]
+    },
+    {
+      "slug": "CollideFollow",
+      "name": "Follow",
+      "description": "An envelope follower",
+      "tags": [
+        "Envelope Follower"
+      ]
     }
   ]
 }

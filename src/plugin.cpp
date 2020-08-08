@@ -9,5 +9,6 @@ void init(Plugin *p) {
 	p->addModel(modelCollidePan);
     p->addModel(modelCollideShuf);
     p->addModel(modelCollideEnv);
+    p->addModel(modelCollideFollow);
 
 }
